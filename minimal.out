@@ -1,0 +1,19 @@
+# normal system environment
+$ which git gradle curl npm
+/Users/ale/.nix-profile/bin/git
+gradle not found
+/usr/bin/curl
+npm not found
+
+# run commmand in nix-environment
+$ nix-shell minimal.nix --run 'which git gradle curl npm'
+/nix/store/hbfjnla1p7qni7gdwd2j5ampyfmy55kz-git-2.19.1/bin/git
+/nix/store/3f110h2fwmiabsw2rhw57sqjprbggrag-gradle-4.10/bin/gradle
+/nix/store/0qklz87k9knxhimv6h9slizwrxm2fs9g-curl-7.61.1-bin/bin/curl
+/nix/store/ghfhw6xza78bl7d340kipj06cazlircz-nodejs-8.11.4/bin/npm
+
+# enter the nix environment
+$ nix-shell minimal.nix
+> exit
+
+# nix build -f minimal.nix

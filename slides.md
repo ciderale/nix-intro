@@ -535,8 +535,8 @@ with (import ./nixpkgs.pinned.nix { overlays = [overlay]; });
 }
 ```
 ```
-nix build -A more-awesome        # build selected derivation
-nix build                        # build all attributes
+nix-build -A more-awesome        # build selected derivation
+nix-build                        # build all attributes
 ```
 <!--
 nix-store -q --references result # result is a symlink to aweseom
@@ -580,14 +580,11 @@ nix path-info -rS ./result-1 # more awsome's total closure size
 
 ```
 // shell.nix : used by nix-shell if present
-# nix-shell: enter shell where 'mkSlides slides.md" works
 (import ./default.nix).slides
 ```
 
 ```
-// default.nix
-# fallback for nix-shell and default for most other nix* tools
-# nix build create all 3 artifacts => ./result, ./result-2/3
+// default.nix :  fallback for nix-shell and default for others
 ...
 { awesome = ...; moreawesome = ...;
   slides = stdenv.mkDerivation {
@@ -601,44 +598,104 @@ nix path-info -rS ./result-1 # more awsome's total closure size
   };
 }
 ```
+```
+$ nix-shell  # use shell.nix: mkSlides will be on path
+$ nix-build  # builds all three defaultnix derivations
+```
 
 # Docker, NIX, and remote builder
 
-## Docker comparison
+## Nix / Docker Comparison
 
 - Docker create isolated run environment
+  - isolation includes network (eg. ports)
   - requires mounting folder, passing env vars
-  - provides network isolation (ports etc)
-  - build differ: only jenkins in docker buildstacks
+  - local builds differ? only jenkins in docker?
+
 - Nix isolates at build (setting rpath etc)
-  - multi-version in same environment possible
-  - no network isolation at runtme
-  - much more modular than docker
-  - smaller community than docker
+  - no network isolation at runtime
+  - but binaries/libraries are isolated
+  - more modular than docker
+  - but, smaller community than docker
 
-## TODO: stdenv.dockerTools {..}
+## nix.dockerTools: the best of both?
 
-- nix is modular!
-  - mix and match the binaries you need!
+- nix is modular! mix and match content
   - various utilities to create users/etc.
-
-- builts images without interaction with docker daemon!
-  - does not need docker installed!
-  - "from scratch" or based on base image
-  - include only the bare minimal dependencies
+  - [build-support/docker/examples.nix](https://github.com/NixOS/nixpkgs/blob/master/pkgs/build-support/docker/examples.nix)
+- "from scratch" or based on base image
   - single-layer or one-layer per 'derivation'*
+  - include only the bare minimal dependencies
 
-- remote builder support
-  - docker requires linux (not osx) binaries
+- builds images without docker interaction
+  - but requires linux (not osx) binaries
 
-## Remote Builders
+## Building a docker image
 
-- nix supports remote builder to create  
+```
+rec {
+  more-awesome = ... ;
+
+  awesome-docker = dockerTools.buildImage {
+     name = "awesome-docker"; tag = "latest";
+     contents = [more-awesome];
+     config.entrypoint = "${more-awesome}/bin/awesome-version";
+  };
+}
+```
+
+### OSX/Docker suprise
+
+```
+nix build -f . awesome-docker # make the image
+docker load < ./result        # load it
+docker run awesome-docker     # run it
+> standard_init_linux.go:190: exec user process caused "exec format error"
+# should work as is on linux, but platform mismatch on osx:
+# cannot run osx binary in linux container!
+```
 - remote builder support
   - docker requires linux (not osx) binaries
   - cross-compilation or remote builder needed
-  - transparently offload build instruction to remote host
   building on osx => linux binaries => remote builders
+
+
+## Remote Builders : Delegate Builds
+
+- transparently offload build to remote host
+  - copies data to and results back from remote
+- build on ssh accessible, nix-enabled hosts
+  - configure ssh-credentials & and its capabilities
+  - [LnL7/nix-docker](https://github.com/LnL7/nix-docker) on Mac for details
+
+## Enforce linux-flavoured builds
+
+```
+# import "linux-flavoured" derivations
+import <nixpkgs> { system = "x86_64-linux"; }
+# but sure to have a linux remote builder on OSX
+# OSX cannot build locally => must delegate
+```
+
+```
+nix build -f . awesome-docker
+docker load < ./result        # load it (just 9.7MB!)
+docker run awesome-docker     # run it
+> OS: Linux 4.9.93-linuxkit-aufs amd64
+```
+
+- make it command line selectable
+```
+// default.nix
+{ system ? builtins.currentSystem  }: # cmdline arg with default
+with (import <nixpkgs> { inherit system });
+...
+```
+```
+build -f .    # build for current sytem, linux or osx
+build -f . --argstr system x86_64-linux  # build for linux
+```
+
 
 
 # NixOPS
@@ -698,4 +755,13 @@ git --version  => git version 2.18.0
   => typically done by package maintainers!
 - OSX has less packages than linux
   => but typicall git/curl/jdk things work well
+
+## Todos:
+
+- garbage collection
+- jenkins integration (jenkinsfiles/node/agent)
+- (nfs) shared local caches
+
+- defining new nixos services
+https://www.reddit.com/r/NixOS/comments/9yggp9/nixos_configuration/
 

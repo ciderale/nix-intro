@@ -155,31 +155,82 @@ Focus on: **Nix/Nixpkgs**, maybe NixOps
 
 
 
-# Introduction: Let's get started
+# NIX 101<br>Let's get started
 <!-- # Introduction to Nix(pkgs) -->
 
+## The three main stages/commands
+
+1. nix-env : "apt-get with rollback"
+
+     2. nix-build : building packages
+
+          3. **nix-shell : build environments** <= our focus
+
+\
+
+- new improved "nix" command to rule them all
+  - currently only nix-build (and others)
 
 
-## A Minimal Example
+
+## nix-env : "apt-get" with rollback
+
+:::::::::::::: {.columns}
+::: {.column width="50%"}
+```
+nix-env -i git     # git
+nix-env -i kpcli   # kpcli, git
+nix-env -e git     # kpcli
+nix-env --rollback # kpcli, git
+# nix-env --switch-generation 53
+```
+:::
+::: {.column width="50%"}
+```
+$ nix-env --list-generations
+53 2018-11-19 17:36:36 (before)
+54 2018-11-20 18:27:25
+55 2018-11-20 18:28:21 (current)
+56 2018-11-20 18:29:07
+```
+:::
+::::::::::::::
+[
+![](https://nixos.org/nix/manual/figures/user-environments.png){ width=60% }
+](https://nixos.org/nix/manual/#fig-user-environments)
+
+## nix-build: a too minimal example
 
 ```
-# minimal.nix
+// default.nix
 pkgs = import <nixpkgs> {};
-
 pkgs.stdenv.mkDerivation {
   name = "awesome-project";
-  version = "1.0";
   buildInputs = with pkgs; [git gradle curl nodejs];
-  # and potentially more things
+  ... # and more to come
 }
 ```
+```
+$ nix build  # defaults to build all of default.nix
+```
+fails, since not defined how to build
+```
+> builder for '/nix/store/nqyf....kf-awesome-projgect.drv' failed with exit code 1; last 2 log lines:
+>   unpacking sources
+>   variable $src or $srcs should point to the source
+> [0 built (1 failed), 0.0 MiB DL]
+> error: build of '/nix/store/nqyfn7kbfh98crcrzn9c2wx4fmj6z7kf-awesome-projgect.drv' failed
+```
 
+<!--
+- specified only what is needed, not how to build
 - import nix-expressions from channel \<nixpkgs\>
 - define a derivation with name and version
 - specify build dependencies
+-->
 
+<!--
 ## Nix-Shell: provides all dependencies
-
 
 ```
 $ nix-shell minimal.nix --run 'which git gradle curl npm'
@@ -198,7 +249,9 @@ gradle not found
 /usr/bin/curl
 npm not found
 ```
+-->
 
+<!--
 ## nix build : requires build command
 
 
@@ -214,34 +267,53 @@ $ nix build -f minimal.nix
 
 - Fails, because we did not specify how to build
 - focus on nix-shell, ie. "build-environment" for now
+-->
 
 ## mkDerivation: overridable "phases"
 
+
 ```
-stdenv.mkDerivation {
-        ...
+stdenv.mkDerivation { ...
   phases = ["buildPhase"];
   buildPhase = ''
-    mkdir -p $out/bin
+    mkdir -p $out/bin     # $out where to place package data
     cat << EOF > $out/bin/awesome-version
-    #!${bash}/bin/bash
-    ${gradle}/bin/gradle --version  #runtime dependency
-    echo $(node --version)          #buildtime dependency
+    #!${stdenv.shell}               #!shebang
+    ${gradle}/bin/gradle --version  # runtime dependency
+    echo $(node --version)          # buildtime dependency
     EOF
     chmod +x $out/bin/awesome-version
   '';
 }
 ```
-- assumes "untar $src; configure; make; make install"
-- language specific builders exist: Python, Haskell, etc.
-- Note: $out/bin is added to the PATH in nix-shell!
+- [unpack, patch, configure, build, install, check, fixup](https://nixos.org/nixpkgs/manual/#sec-stdenv-phases)
+- default is like "configure; make install", but
+- [language specific builders exist: Python, Haskell, etc.](https://nixos.org/nixpkgs/manual/#chap-language-support)
 
-## nix-env : "apt-get" with rollback
+## nix-build: do it!
 
 ```
-nix build -f minimal.nix; awesome-version   # fail; not installed
+$ nix build -f minimal.nix # use instead of defaut.nix!
+> these derivations will be built:
+>  /nix/store/m107mj....6vxl-awesome-project.drv
+> building '/nix/store/m107mj....6vxl-awesome-project.drv'...
+> building /nix/store/ds8f2f....kg4kcs7gwfz8jg-awesome-project
 ```
+<!--
+> building '/nix/store/m107mji94027354yn14ih5qj3ky16vxl-awesome-project.drv'...
+> building /nix/store/ds8f2f6pn1kh6as6j7kg4kcs7gwfz8jg-awesome-project
+-->
+- instantiates the derivation and builds the package
+- result in /nix/store/\$hash-\$package is symlinked
+```
+$ ./result/bin/awesome-version  # test with symlink
+$ nix-env -f minimal.nix -i     # install it
+$ awesome-version               # run it
+```
+- Note: $out/bin is added to the PATH in nix-env/shell!
+- [Note: "hooks" exists to provide such functionality](https://nixos.org/nixos/nix-pills/basic-dependencies-and-hooks.html)
 
+<!--
 ```
 nix-env -f minimal.nix -i; awesome-version  # runs; installed
 nix-env --list-generation                   # gen x+1
@@ -256,19 +328,7 @@ nix-env --rollback; awesome-version         # gen x+1 => runs
 >  52   2018-11-19 17:24:01   (current)
 >  53   2018-11-19 17:36:36
 ```
-
-
-## nix-env : "apt-get" with rollback
-
-```
-nix-env -i subversion # path includes: svn
-nix-env -i firefox    # path includes: firefox, svn
-nix-env --rollback    # firefox is gone again
-nix-env -e subversion # who needs subversion..
-```
-
-![https://nixos.org/nix/manual/#fig-user-environments](https://nixos.org/nix/manual/figures/user-environments.png){ width=50% }
-
+-->
 
 
 
@@ -281,10 +341,9 @@ nix-env -e subversion # who needs subversion..
 
 ### Typical commands
 
-- nix-shell: enter shell with defined dependencies
+- nix-shell: build environment with dependencies
 - nix [search | repl | build | log]  "since 2.0"
 - and some more (not detailed)
-    - nix-build: explicitly build a derivation
     - nix-env: install a derivation in user env "apt-get"
     - nix-channel: "manage" what '\<nixpkgs\>' means
 

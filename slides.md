@@ -363,25 +363,25 @@ stdenv.mkDerivation { name = "awesome-project"; ... };
 with (import <nixpkgs> {});
 callPackage ./awesome.nix {}; # simply import other files
 ```
+- import expression is "subsituted" by file content
+- imports can be ./local, \<channel\>, git, tarball, etc.
 ```
 callPackage ./awesome.nix {}; # convenience for import & call
 # import ./awesome.nix { stdenv=stdenv; gradle=gradle; ... }
 # callPackage ./awesome.nix { gradle = gradle_5 }; # overrides
 ```
 
-- import expression is "subsituted" by file content
-- imports can be ./local, \<channel\>, git, tarball, etc.
-
 
 ## reproducibility: Pin nixpkgs version
 
-Channel \<nixpkgs\> evolves over time
+- [nix-channel --update](https://nixos.wiki/wiki/Nix_Channels) evolves \<nixpkgs\> over time
+- Reproducibility requires [pinning of nixpkgs](https://nixos.wiki/wiki/FAQ/Pinning_Nixpkgs)
+
 ```
 # with (import <nixpkgs> {});          # unpinned, may change
 with (import ./nixpkgs.pinned.nix {}); # pinned
 stdenv.mkDerivation { name = "awesome-project"; ... };
 ```
-
 ```
 // nixpkgs.pinned.nix
 import (builtins.fetchGit {
@@ -393,7 +393,6 @@ import (builtins.fetchGit {
 })
 ```
 
-https://nixos.wiki/wiki/FAQ/Pinning_Nixpkgs
 
 
 ## Overlays for package customization
@@ -417,13 +416,13 @@ callPackage ./awesome.nix {}
 ```
 
 ```
-nix-build && ./result/bin/awesome-version # # With Overlay
+nix-build && ./result/bin/awesome-version # With Overlay
 Gradle 4.10.2
 JVM:  11.0.1 (Azul Systems, Inc. 11.0.1+13-LTS)
 Node: v10.12.0
 ```
 
-## Overlays -- Back to the future
+## *Overlays -- Back to the future
 
 ```
 # self: all packages after *all* overlays applied
@@ -444,8 +443,8 @@ let # a // b combines sets with entries in b "winning"
 in final # laziness allows using final as input
 ```
 
-- https://blog.flyingcircus.io/2017/11/07/nixos-the-dos-and-donts-of-nixpkgs-overlays/
-- https://youtu.be/6bLF7zqB7EM?t=39m50s
+- [Overlay dos and donts](https://blog.flyingcircus.io/2017/11/07/nixos-the-dos-and-donts-of-nixpkgs-overlays/)
+- [Talk with implementation details (fixpoint ahead)](https://youtu.be/6bLF7zqB7EM?t=39m50s)
 
 ## Custom gradle version
 
@@ -457,7 +456,7 @@ callPackage ./awesome.nix {}
 ```
 
 ```
-// overlays.nix
+// overlays.nix : extract overlays
 self: super: {
   jdk = self.jdk11; nodejs = self.nodejs-10_x;
   gradle = self.gradleGen.gradleGen rec {
@@ -475,17 +474,42 @@ JVM:  11.0.1 (Azul Systems, Inc. 11.0.1+13-LTS)
 Node: v10.12.0
 ```
 
+## Inspect runtime dependencies
+
+```
+$ nix-build && nix-store -q --tree ./result # symlink to awesome
+/nix/store/5khj2...x65fjqld2vv-awesome-project-1.0
++---/nix/store/n9hba...laxhidyzxbz-bash-4.4-p23
+|   +---/nix/store/18m8l...6pvw2sc20bz-Libsystem-osx-10.11.6
+|   |   +---/nix/store/18m8l....0bz-Libsystem-osx-10.11.6 [...]
+|   +---/nix/store/n9hba0...axhidyzxbz-bash-4.4-p23 [...]
++---/nix/store/fiqcf2r2...rifb8pan-gradle-5.0-rc-3
+    +---/nix/store/n9hba03...xhidyzxbz-bash-4.4-p23 [...]
+    +---/nix/store/psmpz...lka0jlyjzb5-zulu11.2.3-jdk11.0.1
+    |   +---/nix/store/h0a20...6g9rr6cbn47-hook
+    |   +---/nix/store/psmpz...zb5-zulu11.2.3-jdk11.0.1 [...]
+    +---/nix/store/fiqcf2r2i...ifb8pan-gradle-5.0-rc-3 [...]
+```
+
+```
+$ nix path-info -rS ./result               # total closure size
+/nix/store/18m8l...w2sc20bz-Libsystem-osx-10.11.6	    8048744
+/nix/store/5khj2...fjqld2vv-awesome-project-1.0  	  416999280
+/nix/store/fiqcf...rifb8pan-gradle-5.0-rc-3      	  416998576
+/nix/store/h0a20...rr6cbn47-hook                 	        792
+/nix/store/n9hba...hidyzxbz-bash-4.4-p23         	    9078736
+/nix/store/psmpz...0jlyjzb5-zulu11.2.3-jdk11.0.1 	  310548928
+```
 
 ## Price of reproducibility & isolation
 
-- runtime-search-path (rpath) of artifact must be fixed
-
-- gradle --version writes 'libnative-platform.dylib' in GRADLE_USER_HOME; which must be set explicitly
+- gradle requires a writable GRADLE_USER_HOME
+  and needs to be set <small>(writes 'libnative-platform.dylib')</small>
 
 ```
 name = "awesome-project-2.0";
 buildPhase = ''
-  export GRADLE_USER_HOME=$TMPDIR
+  export GRADLE_USER_HOME=$TMPDIR # set explicitly
   mkdir -p $out/bin
   cat << EOF > $out/bin/awesome-version
   #!${stdenv.shell}
@@ -496,6 +520,8 @@ buildPhase = ''
   chmod +x $out/bin/awesome-version
 '';
 ```
+- fixup usually set artifact runtime-search-path (rpath)
+
 
 ## Handling multiple derivations
 
@@ -511,10 +537,18 @@ with (import ./nixpkgs.pinned.nix { overlays = [overlay]; });
 ```
 nix build -A more-awesome        # build selected derivation
 nix build                        # build all attributes
+```
+<!--
 nix-store -q --references result # result is a symlink to aweseom
 > bash & gradle
 nix-store -q --references result-2 # symlink to more awesome
 > base
+-->
+```
+nix path-info -rS ./result-1 # more awsome's total closure size
+/nix/store/18m8l...2sc20bz-Libsystem-osx-10.11.6	    8048744
+/nix/store/n9hba...idyzxbz-bash-4.4-p23         	    9078736
+/nix/store/qhyzy...1ii65ys-awesome-project-2.0  	    9080080
 ```
 
 ## Adding (sharable) helper scripts

@@ -11,6 +11,14 @@ theme: beige
 
 ## What tools does your project require?
 
+```
+$ which git gradle curl npm
+/Users/ale/.nix-profile/bin/git # what version?
+gradle not found                # oh no..
+/usr/bin/curl                   # what version?
+npm not found                   # really?
+```
+
 - How to install them? In which version?
 - How to switch among projects?
 
@@ -18,33 +26,58 @@ theme: beige
 
 JVM, gradle, NodeJS, python, curl, kpcli, etc.
 
-- *How to install* them? In what version?
+- *How to install*?
   - Undocumented: assume they are just there
   - Readme/Confluence: typically outdated
   - Shell script install: Globally? What about updates?
-- *How to switch* between different requirements?
-  (example: JDK8 versus JDK 11)
+- *How to switch* between projects?
+  - eg. switch between JDK8 and JDK11
 
 ## Nothing but Nix required!
 
 (pun intended)
 
-```install.sh
-# https://nixos.org/nix/download.html
+
+```
+# details: https://nixos.org/nix/download.html
 curl https://nixos.org/nix/install | sh
 ```
-
-```jq.sh
-# Experiment: environment with 'jq' installed?
-nix-shell '<nixpkgs>' -p jq  # shell with jq available
 ```
+pkgs = import <nixpkgs> {};
+pkgs.stdenv.mkDerivation {
+  name = "awesome-project-1.0";
+  buildInputs = with pkgs; [git gradle curl nodejs];
+}
+```
+```
+# nix provides all dependencies in exact versions
+$ nix-shell --run 'which git gradle curl npm'
+/nix/store/hbfjnla1p7qni7gdwd2j5ampyfmy55kz-git-2.19.1/bin/git
+/nix/store/3f110h2fwmiabsw2rhw57sqjprbggrag-gradle-4.10/bin/gradle
+/nix/store/0qklz87k9knxhimv6h9slizwrxm2fs9g-curl-7.61.1-bin/bin/curl
+/nix/store/ghfhw6xza78bl7d340kipj06cazlircz-nodejs-8.11.4/bin/npm
+```
+## Experiment with tools
 
-```jq.sh
-# Develop: environment with all dependencies installed
-nix-shell '<nixpkgs>' -A jq  --pure # to build jq
-$ tar xvzf $src && cd jq*  # happy hacking...
-  && ./configure && make && ./jq --version
-> jq-1.5
+- I need something to process csv & json
+```
+$ nix search csv json
+> * nixpkgs.miller (miller-5.3.0)
+>   Miller is like awk, sed, cut, join, and sort for name-indexed
+>   data such as CSV, TSV, and tabular JSON.
+```
+```
+$ nix-shell -p miller # Brilliant.. get me that
+$$ mlr --version      # is it really there?
+> Miller 5.3.0        # yes it is
+$$ exit               # but, not what I need
+$ which mlr           # is it really gone?
+mlr not found         # nix-shell doesn't pollute the environment
+```
+- You want to improve the tool?
+```
+nix-shell '<nixpkgs> -A miller  # note: -A instead of -p
+# shell with miller's dependencies installed.. happy hacking
 ```
 
 ## Outline
@@ -52,6 +85,8 @@ $ tar xvzf $src && cd jq*  # happy hacking...
 - Nix Ecosystem
 - Nix 101 - The basics
 - Advanced Nix Features
+- Docker & Remote Builds
+- NixOPS / NixOS
 - References
 
 # Nix Ecosystem

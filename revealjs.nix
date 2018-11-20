@@ -1,4 +1,4 @@
-{ fetchgit, pandoc, writeShellScriptBin }:
+{ fetchgit, pandoc, writeShellScriptBin, coreutils }:
 
 rec {
 
@@ -13,7 +13,10 @@ rec {
   '';
 
   mkSlides = writeShellScriptBin "mkSlides" ''
-    ${mkRevealJs}/bin/mkRevealJs --slide-level=2 $1 > $1.html
+    RJS=$(${coreutils}/bin/dirname $1)/reveal.js
+    [ ! -e $RJS ] && ${coreutils}/bin/ln -s ${reveal-js} $RJS
+    ${pandoc}/bin/pandoc -s -t revealjs -V revealjs-url=$RJS \
+       --slide-level=2 $1 > $1.html
   '';
 
 }

@@ -519,9 +519,10 @@ nix-store -q --references result-2 # symlink to more awesome
 
 ## Adding (sharable) helper scripts
 
+- slides using [pandoc](https://pandoc.org) & [reveal.js](https://revealjs.com/#/)
 ```
 // revealjs.nix
-{ fetchgit, pandoc, writeShellScriptBin }: rec {
+{ fetchgit, pandoc, coreutils, writeShellScriptBin }: rec {
  reveal-js = fetchgit {
    url = "https://github.com/hakimel/reveal.js.git";
    rev = "65bdccd5807b6dfecad6eb3ea38872436d291e81";
@@ -529,8 +530,10 @@ nix-store -q --references result-2 # symlink to more awesome
  };
 
  mkSlides = writeShellScriptBin "mkSlides" ''
-   ${pandoc}/bin/pandoc -s -t revealjs --slide-level=2 \
-     -V revealjs-url=${reveal-js} $1 > $1.html
+   RJS=$(${coreutils}/bin/dirname $1)/reveal.js
+   [ ! -e $RJS ] && ${coreutils}/bin/ln -s ${reveal-js} $RJS
+   ${pandoc}/bin/pandoc -s -t revealjs -V revealjs-url=$RJS \
+      --slide-level=2 $1 > $1.html
  '';
 }
 ```
@@ -538,7 +541,6 @@ nix-store -q --references result-2 # symlink to more awesome
 // overlay.nix
 { .. revealJs = super.callPackage ./revealjs.nix {}; .. }
 ```
-- Slides based on RevealJs/Pandoc
 
 ## Shell.nix & Default.nix
 

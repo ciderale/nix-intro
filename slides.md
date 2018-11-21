@@ -84,6 +84,7 @@ nix-shell '<nixpkgs> -A miller  # note: -A instead of -p
 
 - Nix Ecosystem
 - Nix 101 - The basics
+- Nix Modularity
 - Advanced Nix Features
 - Docker & Remote Builds
 - NixOPS / NixOS
@@ -160,11 +161,11 @@ Focus on: **Nix/Nixpkgs**, maybe NixOps
 
 ## The three main stages/commands
 
-1. nix-env : "apt-get with rollback"
+1. **nix-shell : build environments** <= our focus
 
-     2. nix-build : building packages
+    2. nix-build : building packages
 
-          3. **nix-shell : build environments** <= our focus
+        3. nix-env : "apt-get with rollback"
 
 \
 
@@ -293,7 +294,7 @@ stdenv.mkDerivation { ...
 ## nix-build: do it!
 
 ```
-$ nix build -f minimal.nix # use instead of defaut.nix!
+$ nix build
 > these derivations will be built:
 >  /nix/store/m107mj....6vxl-awesome-project.drv
 > building '/nix/store/m107mj....6vxl-awesome-project.drv'...
@@ -307,7 +308,7 @@ $ nix build -f minimal.nix # use instead of defaut.nix!
 - result in /nix/store/\$hash-\$package is symlinked
 ```
 $ ./result/bin/awesome-version  # test with symlink
-$ nix-env -f minimal.nix -i     # install it
+$ nix-env -f default.nix -i     # install it
 $ awesome-version               # run it
 ```
 - Note: $out/bin is added to the PATH in nix-env/shell!
@@ -331,8 +332,6 @@ nix-env --rollback; awesome-version         # gen x+1 => runs
 -->
 
 
-
-
 ## Nix 101 -- The Summary
 
 - Nix-Expression: define packages
@@ -347,8 +346,8 @@ nix-env --rollback; awesome-version         # gen x+1 => runs
     - nix-env: install a derivation in user env "apt-get"
     - nix-channel: "manage" what '\<nixpkgs\>' means
 
+# Nix Modularity
 
-# Advanced Functionality
 
 ## Organize with imports
 
@@ -363,7 +362,7 @@ stdenv.mkDerivation { name = "awesome-project"; ... };
 with (import <nixpkgs> {});
 callPackage ./awesome.nix {}; # simply import other files
 ```
-- import expression is "subsituted" by file content
+- import expression is "substituted" by file content
 - imports can be ./local, \<channel\>, git, tarball, etc.
 ```
 callPackage ./awesome.nix {}; # convenience for import & call
@@ -406,45 +405,21 @@ Node: v8.12.0
 
 ```
 # select/replace/patch packages using overlays
-let overlay = self: super: {
-  jdk = self.jdk11;
+let overlay = self: super: { # self: nixpkgs after *all* overlays
+  jdk = self.jdk11;          # super: nixpkgs before this overlay
   nodejs = self.nodejs-10_x;
 }; in
-
 with (import ./nixpkgs.pinned.nix { overlays = [overlay]; });
 callPackage ./awesome.nix {}
 ```
-
 ```
 nix-build && ./result/bin/awesome-version # With Overlay
 Gradle 4.10.2
 JVM:  11.0.1 (Azul Systems, Inc. 11.0.1+13-LTS)
 Node: v10.12.0
 ```
-
-## *Overlays -- Back to the future
-
-```
-# self: all packages after *all* overlays applied
-# super: all packages before this overlay
-overlay = self: super: { # return: set of package modifications
-  jdk = self.jdk11; # default is jdk = jdk8
-  # gradle depends on jdk will use jdk11 now
-  # jdk = self.jdk would create an infinite loop!
-}
-```
-
-```
-let # a // b combines sets with entries in b "winning"
-  initial = {};
-  first   = initial // (overlay1 final initial)
-  second  = first   // (overlay2 final first)
-  final   = second  // (overlay3 final second)
-in final # laziness allows using final as input
-```
-
 - [Overlay dos and donts](https://blog.flyingcircus.io/2017/11/07/nixos-the-dos-and-donts-of-nixpkgs-overlays/)
-- [Talk with implementation details (fixpoint ahead)](https://youtu.be/6bLF7zqB7EM?t=39m50s)
+
 
 ## Custom gradle version
 
@@ -473,6 +448,85 @@ Gradle 5.0-rc-3
 JVM:  11.0.1 (Azul Systems, Inc. 11.0.1+13-LTS)
 Node: v10.12.0
 ```
+
+
+## Handling multiple derivations
+
+```
+// default.nix
+let overlay = import ./overlay.nix; in
+with (import ./nixpkgs.pinned.nix { overlays = [overlay]; });
+{ # attribute set of derivations
+  awesome = callPackage ./awesome.nix {};
+  more-awesome = callPackage ./moreawesome.nix {};
+}
+```
+```
+nix-build -A more-awesome        # build selected derivation
+nix-build                        # build all attributes
+```
+
+```
+nix path-info -rS ./result-1 # more awsome's total closure size
+/nix/store/18m8l...2sc20bz-Libsystem-osx-10.11.6	    8048744
+/nix/store/n9hba...idyzxbz-bash-4.4-p23         	    9078736
+/nix/store/qhyzy...1ii65ys-awesome-project-2.0  	    9080080
+```
+
+## Slides using [pandoc](https://pandoc.org) & [reveal.js](https://revealjs.com/#/)
+
+- helper scripts become distributable
+
+```
+// revealjs.nix
+{ fetchgit, pandoc, coreutils, writeShellScriptBin }: rec {
+ reveal-js = fetchgit {
+   url = "https://github.com/hakimel/reveal.js.git";
+   rev = "65bdccd5807b6dfecad6eb3ea38872436d291e81";
+   sha256="07460ij4v7l2j0agqd2dsg28gv18bf320rikcbj4pb54k5pr1218";
+ };
+
+ mkSlides = writeShellScriptBin "mkSlides" ''
+   RJS=$(${coreutils}/bin/dirname $1)/reveal.js
+   [ ! -e $RJS ] && ${coreutils}/bin/ln -s ${reveal-js} $RJS
+   ${pandoc}/bin/pandoc -s -t revealjs -V revealjs-url=$RJS \
+      --slide-level=2 $1 > $1.html
+ '';
+}
+```
+```
+// overlay.nix
+{ .. revealJs = super.callPackage ./revealjs.nix {}; .. }
+```
+
+## Shell.nix & Default.nix
+
+```
+// default.nix : define all derivation
+...
+{ awesome = ...; moreawesome = ...;
+  slides = stdenv.mkDerivation {
+    name = "Slides"; src = ./slides.md;
+    buildInputs = [revealJs.mkSlides]; phases = [ "buildPhase" ];
+    buildPhase = ''
+      mkdir -p $out;
+      cp $src $out/index.md;
+      mkSlides $out/index.md; # create index.md.html from md
+    '';
+  };
+}
+```
+```
+// shell.nix : make a selection for used by nix-shell
+(import ./default.nix).slides
+```
+
+```
+$ nix-shell  # use shell.nix: mkSlides will be on path
+$ nix-build  # builds all three default.nix derivations
+```
+
+# Advanced Functionality
 
 ## Inspect runtime dependencies
 
@@ -522,86 +576,32 @@ buildPhase = ''
 ```
 - fixup usually set artifact runtime-search-path (rpath)
 
-
-## Handling multiple derivations
+## Overlays -- Back to the future
 
 ```
-// default.nix
-let overlay = import ./overlay.nix; in
-with (import ./nixpkgs.pinned.nix { overlays = [overlay]; });
-{ # attribute set of derivations
-  awesome = callPackage ./awesome.nix {};
-  more-awesome = callPackage ./moreawesome.nix {};
+# self: all packages after *all* overlays applied
+# super: all packages before this overlay
+overlay = self: super: { # return: set of package modifications
+  jdk = self.jdk11; # default is jdk = jdk8
+  # gradle depends on jdk will use jdk11 now
+  # jdk = self.jdk would create an infinite loop!
 }
 ```
-```
-nix-build -A more-awesome        # build selected derivation
-nix-build                        # build all attributes
-```
-<!--
-nix-store -q --references result # result is a symlink to aweseom
-> bash & gradle
-nix-store -q --references result-2 # symlink to more awesome
-> base
--->
-```
-nix path-info -rS ./result-1 # more awsome's total closure size
-/nix/store/18m8l...2sc20bz-Libsystem-osx-10.11.6	    8048744
-/nix/store/n9hba...idyzxbz-bash-4.4-p23         	    9078736
-/nix/store/qhyzy...1ii65ys-awesome-project-2.0  	    9080080
-```
-
-## Adding (sharable) helper scripts
-
-- slides using [pandoc](https://pandoc.org) & [reveal.js](https://revealjs.com/#/)
-```
-// revealjs.nix
-{ fetchgit, pandoc, coreutils, writeShellScriptBin }: rec {
- reveal-js = fetchgit {
-   url = "https://github.com/hakimel/reveal.js.git";
-   rev = "65bdccd5807b6dfecad6eb3ea38872436d291e81";
-   sha256="07460ij4v7l2j0agqd2dsg28gv18bf320rikcbj4pb54k5pr1218";
- };
-
- mkSlides = writeShellScriptBin "mkSlides" ''
-   RJS=$(${coreutils}/bin/dirname $1)/reveal.js
-   [ ! -e $RJS ] && ${coreutils}/bin/ln -s ${reveal-js} $RJS
-   ${pandoc}/bin/pandoc -s -t revealjs -V revealjs-url=$RJS \
-      --slide-level=2 $1 > $1.html
- '';
-}
-```
-```
-// overlay.nix
-{ .. revealJs = super.callPackage ./revealjs.nix {}; .. }
-```
-
-## Shell.nix & Default.nix
 
 ```
-// shell.nix : used by nix-shell if present
-(import ./default.nix).slides
+let # a // b combines sets with entries in b "winning"
+  initial = {};
+  first   = initial // (overlay1 final initial)
+  second  = first   // (overlay2 final first)
+  final   = second  // (overlay3 final second)
+in final # laziness allows using final as input
 ```
 
-```
-// default.nix :  fallback for nix-shell and default for others
-...
-{ awesome = ...; moreawesome = ...;
-  slides = stdenv.mkDerivation {
-    name = "Slides"; src = ./slides.md;
-    buildInputs = [revealJs.mkSlides]; phases = [ "buildPhase" ];
-    buildPhase = ''
-      mkdir -p $out;
-      cp $src $out/index.md;
-      mkSlides $out/index.md; # create index.md.html from md
-    '';
-  };
-}
-```
-```
-$ nix-shell  # use shell.nix: mkSlides will be on path
-$ nix-build  # builds all three defaultnix derivations
-```
+- [Overlay dos and donts](https://blog.flyingcircus.io/2017/11/07/nixos-the-dos-and-donts-of-nixpkgs-overlays/)
+- [Talk with implementation details (fixpoint ahead)](https://youtu.be/6bLF7zqB7EM?t=39m50s)
+
+
+## TODO: SHELLHOOK
 
 # Docker, NIX, and remote builder
 
@@ -620,6 +620,8 @@ $ nix-build  # builds all three defaultnix derivations
 
 ## nix.dockerTools: the best of both?
 
+TODO: reduce text
+
 - nix is modular! mix and match content
   - various utilities to create users/etc.
   - [build-support/docker/examples.nix](https://github.com/NixOS/nixpkgs/blob/master/pkgs/build-support/docker/examples.nix)
@@ -632,6 +634,7 @@ $ nix-build  # builds all three defaultnix derivations
 
 ## Building a docker image
 
+TODO: document example; show more
 ```
 rec {
   more-awesome = ... ;
@@ -643,8 +646,11 @@ rec {
   };
 }
 ```
+TODO: maybe show build/load here
 
-### OSX/Docker suprise
+## OSX/Docker suprise
+
+TODO: combine with remote builders?
 
 ```
 nix build -f . awesome-docker # make the image
@@ -692,14 +698,18 @@ with (import <nixpkgs> { inherit system });
 ...
 ```
 ```
-build -f .    # build for current sytem, linux or osx
-build -f . --argstr system x86_64-linux  # build for linux
+nix build -f .    # build for current sytem, linux or osx
+nix build -f . --argstr system x86_64-linux  # build for linux
 ```
 
 
 
 # NixOPS
+
 ## Maybe Quick look at nixops
+
+TODO deploy slides via node1:nfs => node:nginx?
+
 
 # References
 
@@ -714,16 +724,9 @@ build -f . --argstr system x86_64-linux  # build for linux
 
 ## Nice to know commands
 
-nix search
-
 nix edit nixpkgs.gradle
-
 repl repl  => :l <nixpkgs>
-
 nix log nixpkgs.jq
-
-nix-store -q --tree /Users/ale/.nix-profile/bin/awesome-version
-
 
 
 ## Expriment with packages (Adhoc)

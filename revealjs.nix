@@ -15,7 +15,7 @@ rec {
   mkSlides = writeShellScriptBin "mkSlides" ''
     RJS=$(${coreutils}/bin/dirname $1)/reveal.js
     [ ! -e $RJS ] && ${coreutils}/bin/ln -s ${reveal-js} $RJS
-    ${pandoc}/bin/pandoc -s -t revealjs -V revealjs-url=$RJS \
+    ${pandoc}/bin/pandoc -s -t revealjs -V codedir=$out \
        --slide-level=2 $1 > $1.html
   '';
 

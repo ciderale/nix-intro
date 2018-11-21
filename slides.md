@@ -383,12 +383,12 @@ stdenv.mkDerivation { name = "awesome-project"; ... };
 ```
 ```
 // nixpkgs.pinned.nix
-import (builtins.fetchGit {
-  name = "nixos-unstable-2018-11-19"; # Descriptive name
-  url = https://github.com/nixos/nixpkgs/;
-  # git ls-remote \
-  #  https://github.com/nixos/nixpkgs-channels nixos-unstable
-  rev = "80738ed9dc0ce48d7796baed5364eef8072c794d";
+# git ls-remote \
+#   https://github.com/nixos/nixpkgs-channels nixos-18.09
+let rev = "03dc6471c12a0ef505ad8136ce07d47b332f2def";
+in  import (builtins.fetchTarball {
+  name = "nixos-18.09-2018-11-21"; # Descriptive name
+  url = "https://github.com/nixos/nixpkgs/archive/${rev}.tar.gz";
 })
 ```
 

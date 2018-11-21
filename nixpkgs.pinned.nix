@@ -6,5 +6,5 @@ let
   rev = "03dc6471c12a0ef505ad8136ce07d47b332f2def"; # nixos-18.09 as of 2018-11-21
 in import (builtins.fetchTarball {
   name = "nixos-18.09-2018-11-21"; # Descriptive name to make the store path easier to identify
-  url = "https://github.com/nixos/nixpkgs-channels/archive/${rev}.tar.gz";
+  url = "https://github.com/nixos/nixpkgs/archive/${rev}.tar.gz";
 })

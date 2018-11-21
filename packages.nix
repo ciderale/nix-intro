@@ -7,6 +7,9 @@ with (import ./nixpkgs.pinned.nix { overlays = [overlay]; inherit system; });
 rec {
   awesome = callPackage ./awesome.nix {};
   more-awesome = callPackage ./moreawesome.nix {};
+  awesome-web = callPackage ./awesomeweb.nix {
+    data = slides;
+  };
 
   awesome-docker = dockerTools.buildImage {
     name = "awesome-docker"; tag = "latest";

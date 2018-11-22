@@ -17,11 +17,13 @@ rec {
     config.entrypoint = "${more-awesome}/bin/awesome-version";
   };
 
+  mkSlides = revealJs.mkSlides;
+
   intro = stdenv.mkDerivation {
     name = "Nix-Introduction";
     buildInputs = [revealJs.mkSlides nixops];
-    src = ./slides.md;
-    imgs = ./imgs;
+    src = ../slides.md;
+    imgs = ../imgs;
     phases = [ "buildPhase" ];
     buildPhase = ''
       mkdir -p $out;

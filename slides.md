@@ -35,7 +35,7 @@ JVM, gradle, NodeJS, python, curl, kpcli, etc.
 
 ## Nothing but Nix required!
 
-(pun intended)
+<small>(pun intended)</small>
 
 
 ```
@@ -50,12 +50,12 @@ pkgs.stdenv.mkDerivation {
 }
 ```
 ```
-# nix provides all dependencies in exact versions
 $ nix-shell --run 'which git gradle curl npm'
 /nix/store/hbfjnla1p7qni7gdwd2j5ampyfmy55kz-git-2.19.1/bin/git
 /nix/store/3f110h2fwmiabsw2rhw57sqjprbggrag-gradle-4.10/bin/gradle
 /nix/store/0qklz87k9knxhimv6h9slizwrxm2fs9g-curl-7.61.1-bin/bin/curl
 /nix/store/ghfhw6xza78bl7d340kipj06cazlircz-nodejs-8.11.4/bin/npm
+# nix provides all dependencies in exact versions
 ```
 ## Experiment with tools
 

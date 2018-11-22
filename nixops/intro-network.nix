@@ -1,5 +1,5 @@
 let
-  slides = (import ./packages.nix {}).intro;
+  slides = (import ../packages {}).intro;
   base = (import ./vmbaseimage.nix { system= "x86_64-linux";});
 
   deployment = {

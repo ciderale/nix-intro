@@ -1,1 +1,1 @@
-(import ./packages.nix {}).intro
+(import ./packages {}).intro

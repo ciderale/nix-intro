@@ -702,11 +702,48 @@ nix build -f .    # build for current sytem, linux or osx
 nix build -f . --argstr system x86_64-linux  # build for linux
 ```
 
+## Serve Slides via Docker/Nginx
+
+```
+let nginxPort = "80";
+    nginxConf = writeText "nginx.conf" '' ... '';
+in dockerTools.buildImage {
+  name = "awesome-web"; tag = "latest";
+  contents = [nginx];
+  runAsRoot = ''
+    #!${stdenv}.shell
+    ${dockerTools.shadowSetup}
+    groupadd --system nginx
+    useradd --system --gid nginx nginx
+  '';
+  config = {
+    Cmd = [ "nginx" "-c" nginxConf ];
+    ExposedPorts = { "${nginxPort}/tcp" = {}; };
+  };
+}
+
+```
+
+::: notes
+
+nice effects.. filename&path in docker and /nix/store are identical
+error with filename is locally inspectable
+
+:::
+
 
 
 # NixOPS
 
 ## Maybe Quick look at nixops
+
+```
+nixops create -d intro intro-network.nix
+nixops deploy -d intro
+nixops ssh -d intro webserver
+nixops destroy -d intro
+nixops delete -d intro
+```
 
 TODO deploy slides via node1:nfs => node:nginx?
 
@@ -727,6 +764,7 @@ TODO deploy slides via node1:nfs => node:nginx?
 nix edit nixpkgs.gradle
 repl repl  => :l <nixpkgs>
 nix log nixpkgs.jq
+nix-store --verify --check-contents
 
 
 ## Expriment with packages (Adhoc)

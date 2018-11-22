@@ -84,10 +84,12 @@ nix-shell '<nixpkgs> -A miller  # note: -A instead of -p
 
 - Nix Ecosystem
 - Nix 101 - The basics
-- Nix Modularity
-- Advanced Nix Features
+- Nix Expressions
+- Some Details
 - Docker & Remote Builds
+<!--
 - NixOPS / NixOS
+-->
 - References
 
 # Nix Ecosystem
@@ -346,7 +348,7 @@ nix-env --rollback; awesome-version         # gen x+1 => runs
     - nix-env: install a derivation in user env "apt-get"
     - nix-channel: "manage" what '\<nixpkgs\>' means
 
-# Nix Modularity
+# Nix Expressions
 
 
 ## Organize with imports
@@ -526,7 +528,30 @@ $ nix-shell  # use shell.nix: mkSlides will be on path
 $ nix-build  # builds all three default.nix derivations
 ```
 
-# Advanced Functionality
+## Nice to know instructions
+
+```
+nix repl ./something.nix  # explore interactively
+  :load \<nixpkgs>\
+  # and any other nix expression
+nix log nixpkgs.jq        # show build log
+nix edit nixpkgs.gradle   # show the derivation
+```
+
+### SHELLHOOK TO CUSTOMIZE THE SHELL
+
+```
+stdenv.mkDerivation {
+  ...
+  shellHook = ''
+  # this is run when entering a nix-shell for this derivation
+  # additional environment variables can be set...
+  PROJECT_ROOT=$(pwd)
+  ''
+}
+```
+
+# Some Details
 
 ## Inspect runtime dependencies
 
@@ -600,73 +625,74 @@ in final # laziness allows using final as input
 - [Overlay dos and donts](https://blog.flyingcircus.io/2017/11/07/nixos-the-dos-and-donts-of-nixpkgs-overlays/)
 - [Talk with implementation details (fixpoint ahead)](https://youtu.be/6bLF7zqB7EM?t=39m50s)
 
+## Command line arguments
 
-## TODO: SHELLHOOK
+- nix-shell/build on 'function like' files
+  - arguments must be provided via --arg or --argstr
+  - unless the argument has a default argument
+
+```
+// default.nix
+{ system ? builtins.currentSystem  }: # cmdline arg with default
+with (import <nixpkgs> { inherit system });
+...
+```
+
+```
+nix build -f .    # build for current sytem, linux or osx
+nix build -f . --argstr system x86_64-linux  # build for linux
+```
+
+
 
 # Docker, NIX, and remote builder
 
 ## Nix / Docker Comparison
 
-- Docker create isolated run environment
+- Docker creates isolated run environment
   - isolation includes network (eg. ports)
   - requires mounting folder, passing env vars
-  - local builds differ? only jenkins in docker?
+  - local builds differ unless dockerized too
 
 - Nix isolates at build (setting rpath etc)
   - no network isolation at runtime
   - but binaries/libraries are isolated
-  - more modular than docker
-  - but, smaller community than docker
+  - more composable than docker
+
 
 ## nix.dockerTools: the best of both?
 
-TODO: reduce text
-
-- nix is modular! mix and match content
-  - various utilities to create users/etc.
-  - [build-support/docker/examples.nix](https://github.com/NixOS/nixpkgs/blob/master/pkgs/build-support/docker/examples.nix)
-- "from scratch" or based on base image
-  - single-layer or one-layer per 'derivation'*
-  - include only the bare minimal dependencies
-
-- builds images without docker interaction
-  - but requires linux (not osx) binaries
-
-## Building a docker image
-
-TODO: document example; show more
 ```
 rec {
   more-awesome = ... ;
 
   awesome-docker = dockerTools.buildImage {
      name = "awesome-docker"; tag = "latest";
-     contents = [more-awesome];
+     # configures "path" like nix-shell
+     contents = [more-awesome kpcli];
      config.entrypoint = "${more-awesome}/bin/awesome-version";
   };
 }
 ```
-TODO: maybe show build/load here
-
-## OSX/Docker suprise
-
-TODO: combine with remote builders?
-
+- nix is composable! mix and match content
+- builds images without docker interaction
 ```
 nix build -f . awesome-docker # make the image
-docker load < ./result        # load it
+docker load < ./result        # load it into docker
+```
+More examples [build-support/docker/examples.nix](https://github.com/NixOS/nixpkgs/blob/master/pkgs/build-support/docker/examples.nix)
+
+## OSX/Docker surprise...
+
+```
 docker run awesome-docker     # run it
 > standard_init_linux.go:190: exec user process caused "exec format error"
 # should work as is on linux, but platform mismatch on osx:
 # cannot run osx binary in linux container!
 ```
-- remote builder support
-  - docker requires linux (not osx) binaries
-  - cross-compilation or remote builder needed
-  building on osx => linux binaries => remote builders
 
 
-## Remote Builders : Delegate Builds
+### Remote Builders : Delegate Builds
 
 - transparently offload build to remote host
   - copies data to and results back from remote
@@ -674,12 +700,13 @@ docker run awesome-docker     # run it
   - configure ssh-credentials & and its capabilities
   - [LnL7/nix-docker](https://github.com/LnL7/nix-docker) on Mac for details
 
+
 ## Enforce linux-flavoured builds
 
 ```
 # import "linux-flavoured" derivations
 import <nixpkgs> { system = "x86_64-linux"; }
-# but sure to have a linux remote builder on OSX
+# be sure to have a linux remote builder on OSX
 # OSX cannot build locally => must delegate
 ```
 
@@ -690,19 +717,13 @@ docker run awesome-docker     # run it
 > OS: Linux 4.9.93-linuxkit-aufs amd64
 ```
 
-- make it command line selectable
-```
-// default.nix
-{ system ? builtins.currentSystem  }: # cmdline arg with default
-with (import <nixpkgs> { inherit system });
-...
-```
-```
-nix build -f .    # build for current sytem, linux or osx
-nix build -f . --argstr system x86_64-linux  # build for linux
-```
+- build "from scratch" or base on existing images
+- all in one layer using (buildImage), or recently
+- one derivation per layer (buildLayeredImage)
+   - => sharing in docker cache
 
-## Serve Slides via Docker/Nginx
+
+## More Advanced Docker/Nginx Example
 
 ```
 let nginxPort = "80";
@@ -733,9 +754,13 @@ error with filename is locally inspectable
 
 
 
-# NixOPS
+# NixOPS / NixOS
 
-## Maybe Quick look at nixops
+
+## In a nutshell
+
+- [NixOS](https://nixos.org) declaratively configure linux
+- [NixOPS](https://nixos.org/nixops/) orchestrate nixos in the cloud
 
 ```
 nixops create -d intro intro-network.nix
@@ -745,8 +770,26 @@ nixops destroy -d intro
 nixops delete -d intro
 ```
 
-TODO deploy slides via node1:nfs => node:nginx?
+## Configuration 'intro-network'
 
+```
+{ webserver = {config, pkgs, ...}: {  # server 1
+      deployment = { # virtualbox, cloud, etc
+          targetEnv = "virtualbox";
+          virtualbox.disks.disk1.baseImage = base; };
+
+      services.httpd.enable = true;
+      services.httpd.documentRoot = "${slides}";
+      services.httpd.adminAddr = "alice@example.org";
+      networking.firewall.allowedTCPPorts = [ 80 ];
+      environment.systemPackages = with pkgs; [
+          vim git nfs-utils zsh wget htop nmap netcat telnet
+      ];
+    };
+
+  #  fileserver = {config, pkgs, ...}: {...}   # server 2
+}
+```
 
 # References
 
@@ -759,50 +802,4 @@ TODO deploy slides via node1:nfs => node:nginx?
 - https://nixos.wiki/wiki/Main_Page
 - https://nixcloud.io/tour/?id=1
 
-## Nice to know commands
-
-nix edit nixpkgs.gradle
-repl repl  => :l <nixpkgs>
-nix log nixpkgs.jq
-nix-store --verify --check-contents
-
-
-## Expriment with packages (Adhoc)
-
-```
-which kpcli
-> kpcli not found
-
-nix-shell '<nixpkgs>' -p kpcli --run 'kpcli --help'
-> Usage: .kpcli-wrapped [--kdb=<file.kdb>] [--key=<file.key>] ...
-```
-
-
-```
-git --version  => git version 2.18.0
-nix-shell '<nixpkgs>' -p git           # enter environment
-git --version  => git version 2.19.1   # within nix-shell
-exit                                   # leave environment
-git --version  => git version 2.18.0
-```
-
-## drawbackes?
-
-- Community is not mainstream, but still quite big
-  => numbers: packages, contributors
-- Packaging requires freezing "dynamic dependencies"
-  => unavoidable for true multiversioning!
-  => makes packaging more complicated
-  => typically done by package maintainers!
-- OSX has less packages than linux
-  => but typicall git/curl/jdk things work well
-
-## Todos:
-
-- garbage collection
-- jenkins integration (jenkinsfiles/node/agent)
-- (nfs) shared local caches
-
-- defining new nixos services
-https://www.reddit.com/r/NixOS/comments/9yggp9/nixos_configuration/
 

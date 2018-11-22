@@ -8,7 +8,7 @@ rec {
   awesome = callPackage ./awesome.nix {};
   more-awesome = callPackage ./moreawesome.nix {};
   awesome-web = callPackage ./awesomeweb.nix {
-    data = slides;
+    data = intro;
   };
 
   awesome-docker = dockerTools.buildImage {
@@ -28,6 +28,10 @@ rec {
       cp $src $out/index.md;
       cp -r $imgs $out/imgs;
       mkSlides $out/index.md;
+    '';
+
+    shellHook = ''
+    PROJECT_ROOT=$(pwd)
     '';
   };
 }

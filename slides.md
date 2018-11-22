@@ -763,7 +763,7 @@ error with filename is locally inspectable
 - [NixOPS](https://nixos.org/nixops/) orchestrate nixos in the cloud
 
 ```
-nixops create -d intro intro-network.nix
+nixops create -d intro nixops/intro-network.nix
 nixops deploy -d intro
 nixops ssh -d intro webserver
 nixops destroy -d intro

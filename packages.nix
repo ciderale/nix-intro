@@ -17,9 +17,9 @@ rec {
     config.entrypoint = "${more-awesome}/bin/awesome-version";
   };
 
-  slides = stdenv.mkDerivation {
+  intro = stdenv.mkDerivation {
     name = "Nix-Introduction";
-    buildInputs = [revealJs.mkSlides];
+    buildInputs = [revealJs.mkSlides nixops];
     src = ./slides.md;
     imgs = ./imgs;
     phases = [ "buildPhase" ];

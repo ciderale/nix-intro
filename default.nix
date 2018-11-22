@@ -1,4 +1,4 @@
 let pkgs = import ./packages.nix {};
 in {
-  inherit (pkgs) awesome more-awesome slides;
+  inherit (pkgs) awesome more-awesome intro;
 }

@@ -1,1 +1,1 @@
-(import ./packages.nix {}).slides
+(import ./packages.nix {}).intro

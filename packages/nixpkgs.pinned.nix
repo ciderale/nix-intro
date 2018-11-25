@@ -9,4 +9,6 @@ in import (builtins.fetchTarball {
   # name = "nixos-18.09-2018-11-21"; # Descriptive name to make the store path easier to identify
   name = "nixos-unstable-2018-11-21"; # Descriptive name to make the store path easier to identify
   url = "https://github.com/nixos/nixpkgs/archive/${rev}.tar.gz";
+  sha256 = "0anmvr6b47gbbyl9v2fn86mfkcwgpbd5lf0yf3drgm8pbv57c1dc";
+  #sha256 = "194h5v5gp7zp93himc0g73mn8nn6lk30k848isrd3cznyl0637bz";
 })

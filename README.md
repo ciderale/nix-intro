@@ -1,24 +1,28 @@
-# Introduction and exploration of *nix* and its ecosystem
+# NIX Introduction and exploration of its ecosystem
 
-## Installation of nix
+## NIX Installation
 
 - https://nixos.org/nix/download.html
 - `curl https://nixos.org/nix/install | sh`
 
-## Basic nix examples: the 'awesome' script
+## Slide Presentation
 
-A simple shell script called 'awesome' is used to demonstrate
-the multi-version capabilities of 'nix'. More specifically, by
-commenting two lines in 'packages/overlay.nix' one can change
+- `nix build -f shell.nix`
+- `open ./result/index.md.html`
+
+## Basic nix examples: the 'awesome' project
+
+A simple shell script called `awesome-version` is used to demonstrate
+the multi-version capabilities of `nix`. More specifically, by
+commenting two lines in `packages/overlay.nix` one can change
 the used version of node and the jdk used by gradle.
 
 - `nix build`: builds all attributes in default.nix. That is
   two versions of 'awesome' and the presentation slides explaining
-  all the steps in this repository in more detail.
-- the results are symlinked in `./result*`.
-- `./result/bin/awesome-version` displays the node/gradle version
+  all the steps in this repository in more detail. The results are symlinked in `./result*`.
+- `./result/bin/awesome-version` displays the node/gradle version of the current configuration.
 - (un)comment the marked lines in packages/overlay.nix, `nix build`,
-  re-run `./result/bin/awesome-version`, and observe the changed version.
+  re-run `./result/bin/awesome-version`, and observe the changed versions.
 
 ## Reproducible build environment
 
@@ -27,7 +31,7 @@ the used version of node and the jdk used by gradle.
   `which mkSlides gradle npm docker`.
 - `mkSlides slides.md` builds the slides using reveal.js & pandoc
 
-## Nix/Docker example
+## NIX/Docker example
 
 Nix can be used to build docker images. However, a linux binary
 must be build, because we cannot execute an e.g. MacOS binary

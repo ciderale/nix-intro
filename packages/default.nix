@@ -21,7 +21,7 @@ rec {
 
   intro = stdenv.mkDerivation {
     name = "Nix-Introduction";
-    buildInputs = [revealJs.mkSlides nixops];
+    buildInputs = [revealJs.mkSlides nixops nodejs gradle docker];
     src = ../slides.md;
     imgs = ../imgs;
     phases = [ "buildPhase" ];

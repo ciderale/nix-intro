@@ -1,9 +1,7 @@
-{ system ? builtins.currentSystem
+{ pkgs ? import <nixpkgs> {}
 }:
 
-let pkgs = import ../packages/nixpkgs.pinned.nix { system = "x86_64-linux"; };
-
-in with pkgs;
+with pkgs;
 
 let
   repoNixOps = fetchFromGitHub {
@@ -16,7 +14,6 @@ let
   machine-configuration = import "${repoNixOps}/nix/virtualbox-image-nixops.nix";
 
   machine = import "${pkgs.path}/nixos" {
-    # inherit system;
     system = "x86_64-linux";
     configuration = machine-configuration;
   };

@@ -1,6 +1,7 @@
 let
   slides = (import ../packages {}).intro;
-  base = (import ./vmbaseimage.nix { system= "x86_64-linux";});
+  pkgs = import ../packages/nixpkgs.pinned.nix { system = "x86_64-linux"; };
+  base = import ./vmbaseimage.nix { inherit pkgs; };
 
   deployment = {
     targetEnv = "virtualbox";

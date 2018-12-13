@@ -12,4 +12,5 @@ self: super: {
     };
   };
   revealJs = super.callPackage ./revealjs.nix {};
+  pinning = super.callPackage ./pinning.nix {};
 }

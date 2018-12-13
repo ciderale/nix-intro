@@ -1,8 +1,7 @@
 { system ? builtins.currentSystem
 }:
 
-let pkgs = import <nixpkgs> { inherit system; };
-# let pkgs = import ./nixpkgs.pinned.nix { inherit system; };
+let pkgs = import ../packages/nixpkgs.pinned.nix { system = "x86_64-linux"; };
 
 in with pkgs;
 
@@ -10,15 +9,15 @@ let
   repoNixOps = fetchFromGitHub {
       owner = "NixOS";
       repo = "nixops";
-      rev = "3d5e816e622b7863daa76732902fd20dba72a0b8";
-      sha256 = "0lb9rdnmi91hkyij10lgv1chi6cgviyxc5g6070hz03g2w8039kb";
+      rev = "e795b963f626162221ccccee9464a3a973a94e98";
+      sha256 = "1zd5c7mkx1s0fd0a5q7hsmp7p7a69nknxza0941in1py3lcv5pz9";
   };
 
   machine-configuration = import "${repoNixOps}/nix/virtualbox-image-nixops.nix";
 
-  machine = import <nixpkgs/nixos> {
-  #machine = import "${pkgs.path}/nixos" {
-    inherit system;
+  machine = import "${pkgs.path}/nixos" {
+    # inherit system;
+    system = "x86_64-linux";
     configuration = machine-configuration;
   };
 

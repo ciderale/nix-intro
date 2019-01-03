@@ -17,14 +17,17 @@ in {
   # Configure SERVER 1
   webserver = {config, pkgs, ...}:
     { inherit deployment;
+      imports = [ ./jenkins.nix ];
 
       services.httpd.enable = true;
       services.httpd.adminAddr = "alice@example.org";
       services.httpd.documentRoot = "${slides}";
-      networking.firewall.allowedTCPPorts = [ 80 ];
+      networking.firewall.allowedTCPPorts = [ 80  8080 ];
+
+      virtualisation.docker.enable = true;
 
       environment.systemPackages = with pkgs; [
-          vim git nfs-utils
+          vim git nfs-utils docker
           zsh wget htop nmap netcat telnet
       ];
 

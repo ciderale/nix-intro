@@ -34,6 +34,9 @@ rec {
 
     shellHook = ''
     PROJECT_ROOT=$(pwd)
+    # maybe related to https://github.com/NixOS/nixpkgs/issues/9438
+    # unsetting IN_NIX_SHELL is needed for nixops to work
+    IN_NIX_SHELL=
     foobar() {
       echo "hello";
     }

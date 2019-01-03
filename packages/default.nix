@@ -21,7 +21,7 @@ rec {
 
   intro = stdenv.mkDerivation {
     name = "Nix-Introduction";
-    buildInputs = [revealJs.mkSlides nixops nodejs gradle docker];
+    buildInputs = [revealJs.mkSlides nixopsUnstable nodejs gradle docker pinning];
     src = ../slides.md;
     imgs = ../imgs;
     phases = [ "buildPhase" ];
@@ -34,6 +34,9 @@ rec {
 
     shellHook = ''
     PROJECT_ROOT=$(pwd)
+    foobar() {
+      echo "hello";
+    }
     '';
   };
 }

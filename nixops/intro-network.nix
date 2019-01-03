@@ -27,11 +27,29 @@ in {
           vim git nfs-utils
           zsh wget htop nmap netcat telnet
       ];
+
+      fileSystems."/mnt/remote" =
+        { fsType = "nfs4";
+          device = "fileserver:/data";
+          options = ["x-systemd.automount" "noauto"];
+        };
+
     };
 
   # Configure SERVER 2
-#  fileserver = {config, pkgs, ...}:
-#    { inherit deployment;
-#      programs.vim.defaultEditor = true;
-#    };
+  fileserver = {config, pkgs, ...}:
+    { inherit deployment;
+      programs.vim.defaultEditor = true;
+
+      services.nfs.server.enable = true;
+      services.nfs.server.exports = ''
+      /data  192.168.56.0/255.255.255.0(rw,no_root_squash,no_acl)
+      '';
+
+      services.nfs.server.createMountPoints = true;
+      services.nfs.server.statdPort = 4000;
+      services.nfs.server.lockdPort = 4001;
+      networking.firewall.allowedTCPPorts = [ 2049 111 4000 4001 ];
+      networking.firewall.allowedUDPPorts = [ 2049 111 4000 4001 ];
+    };
 }
